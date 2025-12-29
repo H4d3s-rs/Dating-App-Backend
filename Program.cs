@@ -1,6 +1,10 @@
-
+using System.Text;
 using API_DatingApp.Data;
+using API_DatingApp.Interfaces;
+using API_DatingApp.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,10 +15,9 @@ builder.Services.AddCors(options =>
         policy  
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .WithOrigins("http://localhost:4200", "https://localhost4200");
+            .WithOrigins("http://localhost:4200", "https://localhost:4200");
 
     });    
-
 });
 
 builder.Services.AddControllers();
@@ -24,8 +27,29 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
     
 });
 
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var tokenKey = builder.Configuration["TokenKey"] ?? throw new Exception("Token key not found.");
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false,
+        };
+    });
+
+
 var app = builder.Build();
 
 app.UseCors("CorsPolicy");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapControllers();
+
 app.Run();
